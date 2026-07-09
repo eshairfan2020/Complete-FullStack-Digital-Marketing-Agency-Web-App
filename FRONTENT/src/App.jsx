@@ -1,5 +1,8 @@
 
+
 import { useState, useEffect, useRef } from "react";
+import { askAssistant } from "./Lib/assistant.function";
+
 
 /* ============================================================
    DATA
@@ -237,361 +240,382 @@ function Card3D({ children, className = "", style = {} }) {
       with delay = index × 0.1s.
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ============================================================ */
-function ExpandingCardsSection({ setPage }) {
-  // hoveredIndex: which card is currently being hovered (-1 = none)
-  const [hoveredIndex, setHoveredIndex] = useState(-1);
-  // revealed: true when section has scrolled into viewport → triggers entrance animation
-  const [revealed, setRevealed] = useState(false);
-  const sectionRef = useRef(null);
+/* ============================================================
+   3D COVERFLOW SERVICES SHOWCASE
+============================================================ */
+function ServicesShowcase3D({ setPage }) {
+  const [active, setActive] = useState(0);
+  const [hovering, setHovering] = useState(false);
+  const wheelLock = useRef(0);
+  const touchStart = useRef(null);
 
-  // Watch for section to enter viewport → reveal cards one by one
+  const go = (dir) =>
+    setActive((a) => (a + dir + SERVICES.length) % SERVICES.length);
+
   useEffect(() => {
-    const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) setRevealed(true); },
-      { threshold: 0.1 }
-    );
-    if (sectionRef.current) obs.observe(sectionRef.current);
-    return () => obs.disconnect();
+    const onKey = (e) => {
+      if (e.key === "ArrowRight") go(1);
+      if (e.key === "ArrowLeft") go(-1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const isAnyHovered = hoveredIndex !== -1;
+  const onWheel = (e) => {
+    const now = Date.now();
+    if (now - wheelLock.current < 450) return;
+    if (Math.abs(e.deltaX) < 8 && Math.abs(e.deltaY) < 8) return;
+    wheelLock.current = now;
+    go(e.deltaY + e.deltaX > 0 ? 1 : -1);
+  };
+  const onTouchStart = (e) => { touchStart.current = e.touches[0].clientX; };
+  const onTouchEnd = (e) => {
+    if (touchStart.current == null) return;
+    const dx = e.changedTouches[0].clientX - touchStart.current;
+    if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1);
+    touchStart.current = null;
+  };
+
+  const current = SERVICES[active];
+  const accent = current.color;
+  const accent2 = "#22d3ee";
+
+  const keyframes = `
+    @keyframes ssBgFloat { 0%,100%{transform:translate3d(0,0,0) scale(1);} 50%{transform:translate3d(2%,-3%,0) scale(1.08);} }
+    @keyframes ssBgFloat2 { 0%,100%{transform:translate3d(0,0,0) scale(1);} 50%{transform:translate3d(-3%,2%,0) scale(1.1);} }
+    @keyframes ssShimmer { 0%{background-position:-200% 0;} 100%{background-position:200% 0;} }
+    @keyframes ssPulseGlow { 0%,100%{opacity:.55;} 50%{opacity:1;} }
+    @keyframes ssFadeUp { from{opacity:0;transform:translateY(14px);} to{opacity:1;transform:translateY(0);} }
+  `;
 
   return (
-    <section
-      ref={sectionRef}
-      style={{ background: "#08080e", padding: "80px 0 100px", position: "relative" }}
-    >
-      {/* ── Section header ── */}
-      <div style={{ textAlign: "center", padding: "0 24px 56px" }}>
-        <AnimatedSection>
-          <span style={{ display: "inline-block", fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#818cf8", marginBottom: 14 }}>
-            What We Do
-          </span>
-          <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(2rem,4vw,2.75rem)", fontWeight: 800, color: "#fafafa", marginBottom: 16 }}>
-            Services Built for Growth
-          </h2>
-          <p style={{ fontSize: "1.05rem", color: "#a1a1aa", maxWidth: 440, margin: "0 auto", lineHeight: 1.7 }}>
-            Hover any card to explore that service in detail.
-          </p>
-        </AnimatedSection>
-      </div>
-
-      {/*
-        ── FULL-SCREEN BLUR OVERLAY ──
-        This div covers the ENTIRE screen when any card is hovered.
-        It uses backdrop-filter:blur to blur everything behind it.
-        The hovered card has z-index:50, this overlay has z-index:40,
-        so the card floats sharp ABOVE the blur.
-        All non-hovered cards sit at z-index:1 — BELOW the blur → they look blurred.
-      */}
-      <div style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 40,
-        // Only visible when a card is hovered
-        opacity: isAnyHovered ? 1 : 0,
-        // backdropFilter blurs everything rendered behind this div
-        //backdropFilter: isAnyHovered ? "blur(14px)" : "blur(0px)",
-        //WebkitBackdropFilter: isAnyHovered ? "blur(14px)" : "blur(0px)",
-       // background: isAnyHovered ? "rgba(5,5,12,0.72)" : "rgba(5,5,12,0)",
-        transition: "opacity 0.4s ease, backdrop-filter 0.4s ease",
-        // pointer-events:none so it doesn't block mouse events on the cards
-        pointerEvents: "none",
-      }} />
-
-      {/* ── Cards Grid: 3 columns × 2 rows ── */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(3, 1fr)",
-        gap: 20,
-        maxWidth: 1200,
-        margin: "0 auto",
-        padding: "0 32px",
+    <main
+      style={{
         position: "relative",
-        // zIndex:1 keeps the grid below the blur overlay
-        // (individual hovered card will override with zIndex:50)
-        zIndex: 1,
+        minHeight: "100vh",
+        paddingTop: 72,
+        overflow: "hidden",
+        background:
+          "radial-gradient(1200px 800px at 80% -10%, #1a0b3d 0%, transparent 60%)," +
+          "radial-gradient(1000px 700px at -10% 110%, #0b3d3a 0%, transparent 55%)," +
+          "linear-gradient(180deg,#05060b 0%,#07080f 100%)",
+        color: "#f5f6fb",
+        fontFamily: "'Inter',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif",
       }}
-        className="expanding-cards-grid"
-      >
-        {SERVICES.map((s, i) => {
-          const isHovered = hoveredIndex === i;
+      onWheel={onWheel}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
+      <style>{keyframes}</style>
 
-          // Staggered entrance: each card appears with delay i*0.1s
-          const entranceDelay = revealed ? i * 0.1 : 9;
+      {/* Animated gradient backdrop */}
+      <div aria-hidden style={{
+        position: "absolute", inset: 0, pointerEvents: "none",
+        background:
+          `radial-gradient(600px 600px at 20% 30%, ${accent}33, transparent 60%),` +
+          `radial-gradient(700px 700px at 80% 70%, ${accent2}33, transparent 60%)`,
+        transition: "background 800ms ease",
+        animation: "ssBgFloat 14s ease-in-out infinite",
+        filter: "blur(20px)",
+      }}/>
+      <div aria-hidden style={{
+        position: "absolute", inset: 0, pointerEvents: "none",
+        backgroundImage:
+          "radial-gradient(2px 2px at 20% 30%,rgba(255,255,255,.15),transparent 50%)," +
+          "radial-gradient(1px 1px at 70% 60%,rgba(255,255,255,.12),transparent 50%)," +
+          "radial-gradient(1.5px 1.5px at 40% 80%,rgba(255,255,255,.1),transparent 50%)",
+        animation: "ssBgFloat2 22s ease-in-out infinite",
+      }}/>
 
-          return (
-            <div
-              key={s.title}
-              onMouseEnter={() => setHoveredIndex(i)}
-              onMouseLeave={() => setHoveredIndex(-1)}
-              style={{
-                // ── HEIGHT ──
-                // Normal: 260px. Hovered: 400px (taller to show content)
-                height: isHovered ? 420 : 270,
+      {/* Header */}
+      <header style={{
+        position: "relative", zIndex: 2, padding: "40px 24px 0",
+        maxWidth: 1280, margin: "0 auto", textAlign: "center",
+      }}>
+        <div style={{
+          display: "inline-flex", alignItems: "center", gap: 8,
+          padding: "6px 14px", border: "1px solid rgba(255,255,255,.12)",
+          borderRadius: 999, fontSize: 12, letterSpacing: ".18em",
+          textTransform: "uppercase", color: "rgba(255,255,255,.75)",
+          background: "rgba(255,255,255,.03)", backdropFilter: "blur(8px)",
+        }}>
+          <span style={{
+            width: 6, height: 6, borderRadius: 999, background: accent,
+            boxShadow: `0 0 12px ${accent}`,
+            animation: "ssPulseGlow 2s ease-in-out infinite",
+          }}/>
+          Our Services
+        </div>
+        <h1 style={{
+          margin: "20px auto 10px",
+          fontFamily: "'Playfair Display',serif",
+          fontSize: "clamp(34px,5.2vw,64px)",
+          lineHeight: 1.02, letterSpacing: "-0.03em", fontWeight: 700,
+          maxWidth: 900,
+          background: "linear-gradient(180deg,#fff 0%,rgba(255,255,255,.7) 100%)",
+          WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
+        }}>
+          Crafted services for brands that refuse the ordinary.
+        </h1>
+        <p style={{
+          margin: "0 auto", maxWidth: 620,
+          color: "rgba(229,231,235,.65)", fontSize: 16, lineHeight: 1.6,
+        }}>
+          Scroll, swipe, or use your arrow keys to drift through our practice.
+        </p>
+      </header>
 
-                borderRadius: 20,
-                overflow: "hidden",
-                position: "relative",
-                cursor: "pointer",
-                border: `1px solid ${isHovered ? s.color + "80" : "rgba(255,255,255,0.08)"}`,
+      {/* Stage */}
+      <section style={{
+        position: "relative", zIndex: 2,
+        height: "min(72vh, 640px)", marginTop: 32, perspective: 2000,
+      }}>
+        <div style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d" }}>
+          {SERVICES.map((s, i) => {
+            let offset = i - active;
+            if (offset > SERVICES.length / 2) offset -= SERVICES.length;
+            if (offset < -SERVICES.length / 2) offset += SERVICES.length;
+            const abs = Math.abs(offset);
+            const isActive = offset === 0;
+            const visible = abs <= 3;
 
-                // ── SCALE & Z-INDEX ──
-                // Hovered card: scale(1.06) + z-index:50 (floats above blur layer)
-                // Normal card: scale(1) + z-index:1
-                transform: isHovered ? "scale(1.06)" : "scale(1)",
-                zIndex: isHovered ? 50 : 1,
+            const translateX = offset * 220;
+            const translateZ = -abs * 220 + (isActive && hovering ? 40 : 0);
+            const rotateY = offset * -22;
+            const scale = isActive ? (hovering ? 1.04 : 1) : 1 - abs * 0.08;
+            const blur = isActive ? 0 : Math.min(abs * 2.2, 8);
+            const opacity = visible ? (isActive ? 1 : 1 - abs * 0.22) : 0;
 
-                // ── TRANSITIONS ──
-                transition: [
-                  "transform 0.45s cubic-bezier(0.34,1.56,0.64,1)",
-                  "height 0.45s cubic-bezier(0.34,1.56,0.64,1)",
-                  "border-color 0.3s ease",
-                  "box-shadow 0.4s ease",
-                  "z-index 0s",
-                  "opacity 0.5s ease",
-                ].join(", "),
-
-                // Glow shadow when hovered
-                boxShadow: isHovered
-                  ? `0 0 0 1px ${s.color}60, 0 24px 60px ${s.color}30, 0 48px 80px rgba(0,0,0,0.6)`
-                  : "0 4px 20px rgba(0,0,0,0.3)",
-
-                // Staggered entrance animation
-                animation: revealed ? `cardReveal 0.55s ${entranceDelay}s both` : "none",
-              }}
-            >
-              {/* ── Background image ── */}
-              <img
-                src={s.bg}
-                alt={s.title}
+            return (
+              <button
+                key={s.title}
+                type="button"
+                onClick={() => setActive(i)}
+                onMouseEnter={() => isActive && setHovering(true)}
+                onMouseLeave={() => setHovering(false)}
+                aria-label={s.title}
                 style={{
-                  position: "absolute", inset: 0,
-                  width: "100%", height: "100%",
-                  objectFit: "cover",
-                  // Image brightens + zooms on hover
-                  filter: isHovered ? "brightness(0.38) saturate(0.65)" : "brightness(0.2) saturate(0.35)",
-                  transform: isHovered ? "scale(1.08)" : "scale(1)",
-                  transition: "filter 0.5s ease, transform 0.6s ease",
+                  position: "absolute", top: "50%", left: "50%",
+                  width: "min(420px,78vw)", height: "min(540px,68vh)",
+                  marginLeft: "calc(min(420px,78vw) / -2)",
+                  marginTop: "calc(min(540px,68vh) / -2)",
+                  transform: `translate3d(${translateX}px,0,${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`,
+                  transition: "transform 700ms cubic-bezier(.22,1,.36,1), filter 700ms cubic-bezier(.22,1,.36,1), opacity 600ms ease",
+                  filter: `blur(${blur}px)`, opacity,
+                  zIndex: 100 - abs,
+                  pointerEvents: visible ? "auto" : "none",
+                  padding: 0, border: "none", background: "transparent",
+                  cursor: isActive ? "default" : "pointer",
+                  transformStyle: "preserve-3d",
                 }}
-              />
-
-              {/* ── Colour gradient overlay (bottom fade) ── */}
-              <div style={{
-                position: "absolute", inset: 0,
-                background: isHovered
-                  ? `linear-gradient(160deg, ${s.color}22 0%, rgba(8,8,14,0.9) 55%, rgba(8,8,14,0.98) 100%)`
-                  : `linear-gradient(to top, rgba(8,8,14,0.95) 0%, rgba(8,8,14,0.4) 100%)`,
-                transition: "background 0.5s ease",
-              }} />
-
-              {/* ── Pulsing glow orb (visible on hover) ── */}
-              <div style={{
-                position: "absolute",
-                top: "30%", left: "50%",
-                transform: "translate(-50%, -50%)",
-                width: 200, height: 200,
-                borderRadius: "50%",
-                background: `radial-gradient(circle, ${s.color}35 0%, transparent 65%)`,
-                opacity: isHovered ? 1 : 0,
-                transition: "opacity 0.5s ease",
-                animation: isHovered ? "pulseGlow 3s ease-in-out infinite" : "none",
-                pointerEvents: "none",
-              }} />
-
-              {/* ── Spinning outer ring (hover only) ── */}
-              {isHovered && (
+              >
                 <div style={{
-                  position: "absolute", top: "28%", left: "50%",
-                  width: 120, height: 120,
-                  marginTop: -60, marginLeft: -60,
-                  borderRadius: "50%",
-                  border: `1.5px dashed ${s.color}45`,
-                  animation: "spinCW 10s linear infinite",
-                  pointerEvents: "none",
-                }} />
-              )}
-
-              {/* ── Spinning inner ring CCW (hover only) ── */}
-              {isHovered && (
-                <div style={{
-                  position: "absolute", top: "28%", left: "50%",
-                  width: 86, height: 86,
-                  marginTop: -43, marginLeft: -43,
-                  borderRadius: "50%",
-                  border: `1px dashed ${s.color}60`,
-                  animation: "spinCCW 7s linear infinite",
-                  pointerEvents: "none",
-                }} />
-              )}
-
-              {/* ── Orbiting dot (hover only) ── */}
-              {isHovered && (
-                <div style={{
-                  position: "absolute", top: "28%", left: "50%",
-                  width: 0, height: 0,
-                  animation: "orbitCard 5s linear infinite",
-                  pointerEvents: "none",
+                  position: "relative", height: "100%", width: "100%",
+                  borderRadius: 28, padding: 28, textAlign: "left", color: "#f5f6fb",
+                  background:
+                    "linear-gradient(160deg,rgba(255,255,255,.08) 0%,rgba(255,255,255,.02) 60%)," +
+                    "linear-gradient(180deg,rgba(10,12,22,.85),rgba(10,12,22,.95))",
+                  border: "1px solid rgba(255,255,255,.08)",
+                  boxShadow: isActive
+                    ? `0 40px 120px -20px ${accent}55, 0 10px 40px -10px ${accent2}40, inset 0 1px 0 rgba(255,255,255,.08)`
+                    : "0 20px 60px -20px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.05)",
+                  overflow: "hidden", backdropFilter: "blur(12px)",
+                  display: "flex", flexDirection: "column",
                 }}>
+                  {/* Aurora glow */}
+                  <div aria-hidden style={{
+                    position: "absolute", top: -120, right: -120,
+                    width: 320, height: 320, borderRadius: "50%",
+                    background: `radial-gradient(closest-side, ${s.color}55, transparent 70%)`,
+                    filter: "blur(20px)", animation: "ssPulseGlow 4s ease-in-out infinite",
+                    pointerEvents: "none",
+                  }}/>
+                  <div aria-hidden style={{
+                    position: "absolute", bottom: -140, left: -100,
+                    width: 320, height: 320, borderRadius: "50%",
+                    background: `radial-gradient(closest-side, ${accent2}44, transparent 70%)`,
+                    filter: "blur(24px)", pointerEvents: "none",
+                  }}/>
+
+                  {/* Icon */}
                   <div style={{
-                    width: 8, height: 8, borderRadius: "50%",
-                    background: s.color,
-                    boxShadow: `0 0 10px ${s.color}`,
-                    marginTop: -4, marginLeft: -4,
-                  }} />
+                    position: "relative", width: 64, height: 64, borderRadius: 18,
+                    display: "grid", placeItems: "center", fontSize: 30,
+                    background: `linear-gradient(135deg, ${s.color}, ${accent2})`,
+                    boxShadow: `0 10px 30px -10px ${s.color}aa`,
+                  }}>
+                    {s.icon}
+                  </div>
+
+                  {/* Hero image */}
+                  <div style={{
+                    position: "relative", marginTop: 20,
+                    height: 180, borderRadius: 18, overflow: "hidden",
+                    border: "1px solid rgba(255,255,255,.08)",
+                    boxShadow: `0 20px 50px -20px ${s.color}66`,
+                  }}>
+                    <img
+                      src={s.bg}
+                      alt={s.title}
+                      loading="lazy"
+                      style={{
+                        width: "100%", height: "100%", objectFit: "cover", display: "block",
+                        transform: isActive && hovering ? "scale(1.08)" : "scale(1)",
+                        transition: "transform 700ms cubic-bezier(.22,1,.36,1)",
+                      }}
+                    />
+                    <div aria-hidden style={{
+                      position: "absolute", inset: 0,
+                      background: `linear-gradient(180deg, transparent 40%, rgba(10,12,22,.85) 100%), linear-gradient(135deg, ${s.color}22, transparent 60%)`,
+                    }}/>
+                  </div>
+
+                  {/* Stat badge */}
+                  <div style={{
+                    position: "absolute", top: 28, right: 28,
+                    display: "inline-flex", alignItems: "baseline", gap: 8,
+                    padding: "8px 14px", borderRadius: 999,
+                    border: "1px solid rgba(255,255,255,.12)",
+                    background: "rgba(255,255,255,.04)", backdropFilter: "blur(10px)",
+                    fontSize: 12, color: "rgba(255,255,255,.8)",
+                  }}>
+                    <span style={{ fontWeight: 700, color: "#fff", fontSize: 14, letterSpacing: "-0.01em" }}>
+                      {s.stats[0]}
+                    </span>
+                    <span style={{ opacity: .7 }}>{s.stats[1]}</span>
+                  </div>
+
+                  {/* Body */}
+                  <div style={{ marginTop: "auto", position: "relative" }}>
+                    <div style={{
+                      fontSize: 12, letterSpacing: ".22em", textTransform: "uppercase",
+                      color: "rgba(255,255,255,.55)", marginBottom: 10,
+                    }}>
+                      {String(i + 1).padStart(2, "0")} / {String(SERVICES.length).padStart(2, "0")}
+                    </div>
+                    <h3 style={{
+                      margin: 0, fontFamily: "'Playfair Display',serif",
+                      fontSize: 30, lineHeight: 1.1, letterSpacing: "-0.02em", fontWeight: 700,
+                    }}>{s.title}</h3>
+                    <p style={{ margin: "12px 0 0", color: "rgba(229,231,235,.7)", fontSize: 15, lineHeight: 1.6 }}>
+                      {s.description}
+                    </p>
+
+                    {/* Hover reveal */}
+                    <div style={{
+                      display: "grid",
+                      gridTemplateRows: isActive && hovering ? "1fr" : "0fr",
+                      transition: "grid-template-rows 500ms ease",
+                    }}>
+                      <div style={{ overflow: "hidden" }}>
+                        <p style={{
+                          margin: "14px 0 0", fontSize: 13, lineHeight: 1.7,
+                          color: "rgba(229,231,235,.6)",
+                          animation: isActive && hovering ? "ssFadeUp 500ms ease both" : undefined,
+                        }}>
+                          {s.detail}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* CTA */}
+                    <div style={{ marginTop: 22 }}>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setPage && setPage("contact"); }}
+                        style={{
+                          position: "relative", display: "inline-flex", alignItems: "center", gap: 10,
+                          padding: "12px 18px", borderRadius: 14, fontSize: 14, fontWeight: 700,
+                          color: "#0b0c14", border: "none", cursor: "pointer",
+                          background: `linear-gradient(135deg, ${s.color}, ${accent2})`,
+                          boxShadow: `0 12px 30px -12px ${s.color}cc`,
+                          overflow: "hidden", fontFamily: "inherit",
+                        }}
+                      >
+                        Explore Service ›
+                        <span aria-hidden style={{
+                          position: "absolute", inset: 0,
+                          background: "linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent)",
+                          backgroundSize: "200% 100%", animation: "ssShimmer 2.6s linear infinite",
+                          mixBlendMode: "overlay", pointerEvents: "none",
+                        }}/>
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              )}
+              </button>
+            );
+          })}
+        </div>
 
-              {/* ── Service icon ── */}
-              <div style={{
-                position: "absolute",
-                // Icon moves up when hovered to make room for content below
-                top: isHovered ? "22%" : "35%",
-                left: "50%",
-                transform: "translateX(-50%) translateY(-50%)",
-                fontSize: isHovered ? 52 : 38,
-                lineHeight: 1,
-                transition: "top 0.45s ease, font-size 0.45s ease",
-                animation: isHovered ? "floatIcon 3.5s ease-in-out infinite" : "none",
-                filter: isHovered ? `drop-shadow(0 0 18px ${s.color}80)` : "none",
-                zIndex: 2,
-              }}>
-                {s.icon}
-              </div>
+        {/* Arrows — clickable, high z-index, above stage */}
+        <ArrowBtn side="left" onClick={() => go(-1)} />
+        <ArrowBtn side="right" onClick={() => go(1)} />
+      </section>
 
-              {/* ── Always-visible bottom label (shown when NOT hovered) ── */}
-              <div style={{
-                position: "absolute",
-                bottom: 0, left: 0, right: 0,
-                padding: "20px 22px",
-                opacity: isHovered ? 0 : 1,
-                transform: isHovered ? "translateY(8px)" : "translateY(0)",
-                transition: "opacity 0.3s ease, transform 0.3s ease",
-                zIndex: 2,
-              }}>
-                {/* Small stat badge */}
-                <div style={{
-                  display: "inline-flex", alignItems: "center", gap: 5,
-                  background: `${s.color}20`,
-                  border: `1px solid ${s.color}40`,
-                  borderRadius: 50, padding: "3px 10px",
-                  marginBottom: 8,
-                }}>
-                  <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "1rem", color: s.color, letterSpacing: "0.05em", lineHeight: 1 }}>{s.stats[0]}</span>
-                  <span style={{ fontSize: 10, color: "#a1a1aa", fontWeight: 600 }}>{s.stats[1]}</span>
-                </div>
-                <h3 style={{ fontFamily: "'Playfair Display',serif", fontSize: "1.05rem", fontWeight: 800, color: "#fafafa", lineHeight: 1.2 }}>{s.title}</h3>
-              </div>
-
-              {/* ── Expanded content (slides up on hover) ── */}
-              <div style={{
-                position: "absolute",
-                bottom: 0, left: 0, right: 0,
-                padding: "24px 24px 28px",
-                // Fades in only when hovered
-                opacity: isHovered ? 1 : 0,
-                transform: isHovered ? "translateY(0)" : "translateY(20px)",
-                // Slight delay so it appears after the card finishes expanding
-                transition: "opacity 0.35s ease 0.1s, transform 0.35s ease 0.1s",
-                zIndex: 2,
-              }}>
-                {/* Stat badge */}
-                <div style={{
-                  display: "inline-flex", alignItems: "center", gap: 7,
-                  background: `${s.color}22`,
-                  border: `1px solid ${s.color}50`,
-                  borderRadius: 50, padding: "5px 14px",
-                  marginBottom: 12,
-                  animation: isHovered ? "badgePulse 2.5s ease-in-out infinite" : "none",
-                }}>
-                  <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.3rem", color: s.color, letterSpacing: "0.06em", lineHeight: 1 }}>{s.stats[0]}</span>
-                  <span style={{ fontSize: 11, color: "#ccc", fontWeight: 600 }}>{s.stats[1]}</span>
-                </div>
-
-                {/* Title */}
-                <h3 style={{
-                  fontFamily: "'Playfair Display',serif",
-                  fontSize: "clamp(1.2rem,2vw,1.55rem)",
-                  fontWeight: 800,
-                  color: "#fff",
-                  marginBottom: 10, lineHeight: 1.2,
-                  textShadow: "0 2px 10px rgba(0,0,0,0.8)",
-                }}>
-                  {s.title}
-                </h3>
-
-                {/* Description */}
-                <p style={{
-                  fontSize: 13, color: "rgba(255,255,255,0.78)",
-                  lineHeight: 1.65, marginBottom: 18,
-                  textShadow: "0 1px 6px rgba(0,0,0,0.9)",
-                }}>
-                  {s.description}
-                </p>
-
-                {/* Explore button */}
-                <button
-                  onClick={(e) => { e.stopPropagation(); setPage("services"); }}
-                  style={{
-                    padding: "9px 24px",
-                    background: s.color,
-                    border: "none", borderRadius: 50,
-                    color: "#fff", fontSize: 13, fontWeight: 700,
-                    cursor: "pointer", fontFamily: "inherit",
-                    boxShadow: `0 4px 18px ${s.color}55`,
-                    transition: "transform 0.2s, box-shadow 0.2s",
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px) scale(1.05)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0) scale(1)"; }}
-                >
-                  Explore →
-                </button>
-              </div>
-
-            </div>
+      {/* Dots */}
+      <div style={{
+        position: "relative", zIndex: 3, display: "flex", gap: 10,
+        justifyContent: "center", padding: "32px 0 80px",
+      }}>
+        {SERVICES.map((s, i) => {
+          const isActive = i === active;
+          return (
+            <button
+              key={s.title}
+              type="button"
+              onClick={() => setActive(i)}
+              aria-label={`Go to ${s.title}`}
+              style={{
+                width: isActive ? 32 : 10, height: 10, borderRadius: 999,
+                border: "1px solid rgba(255,255,255,.15)",
+                background: isActive
+                  ? `linear-gradient(90deg, ${s.color}, ${accent2})`
+                  : "rgba(255,255,255,.08)",
+                cursor: "pointer", transition: "all 400ms ease",
+                boxShadow: isActive ? `0 0 18px ${s.color}88` : "none",
+              }}
+            />
           );
         })}
       </div>
+    </main>
+  );
+}
 
-      {/* CSS keyframes for all animations used inside this component */}
-      <style>{`
-        /* Card floats up when first entering viewport */
-        @keyframes cardReveal {
-          from { opacity: 0; transform: scale(0.88) translateY(28px); }
-          to   { opacity: 1; transform: scale(1)    translateY(0);    }
-        }
-        /* Icon bobs up and down gently */
-        @keyframes floatIcon {
-          0%,100% { transform: translateX(-50%) translateY(-50%); }
-          40%      { transform: translateX(-50%) translateY(calc(-50% - 10px)) rotate(3deg); }
-          70%      { transform: translateX(-50%) translateY(calc(-50% - 4px)) rotate(-2deg); }
-        }
-        /* Outer ring rotates clockwise */
-        @keyframes spinCW  { from{transform:rotate(0deg)}   to{transform:rotate(360deg)}  }
-        /* Inner ring rotates counter-clockwise */
-        @keyframes spinCCW { from{transform:rotate(360deg)} to{transform:rotate(0deg)}    }
-        /* Glow orb breathes in and out */
-        @keyframes pulseGlow {
-          0%,100% { opacity:0.4; transform:translate(-50%,-50%) scale(1);    }
-          50%      { opacity:0.7; transform:translate(-50%,-50%) scale(1.18); }
-        }
-        /* Dot orbits around the icon area */
-        @keyframes orbitCard {
-          from { transform: rotate(0deg)   translateX(52px) rotate(0deg);    }
-          to   { transform: rotate(360deg) translateX(52px) rotate(-360deg); }
-        }
-        /* Stat badge pulses opacity */
-        @keyframes badgePulse { 0%,100%{opacity:.75} 50%{opacity:1} }
-
-        /* Responsive: 2 columns on tablet, 1 on mobile */
-        @media (max-width: 900px) {
-          .expanding-cards-grid { grid-template-columns: repeat(2,1fr) !important; }
-        }
-        @media (max-width: 560px) {
-          .expanding-cards-grid { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
-    </section>
+function ArrowBtn({ side, onClick }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      aria-label={side === "left" ? "Previous" : "Next"}
+      style={{
+        position: "absolute",
+        top: "50%",
+        left: side === "left" ? "max(16px,3vw)" : "auto",
+        right: side === "right" ? "max(16px,3vw)" : "auto",
+        transform: `translateY(-50%) scale(${hover ? 1.08 : 1})`,
+        width: 56, height: 56, borderRadius: 999,
+        display: "grid", placeItems: "center",
+        border: "1px solid rgba(255,255,255,.18)",
+        background: "rgba(20,20,30,.55)",
+        color: "#fff", fontSize: 22, fontWeight: 700,
+        cursor: "pointer", backdropFilter: "blur(10px)",
+        boxShadow: hover
+          ? "0 10px 40px -10px rgba(124,92,255,.55)"
+          : "0 6px 24px -10px rgba(0,0,0,.6)",
+        transition: "transform 300ms ease, box-shadow 300ms ease, background 300ms ease",
+        zIndex: 999,                  // always above cards
+        pointerEvents: "auto",        // ensure clickable
+        userSelect: "none",
+        fontFamily: "inherit",
+      }}
+    >
+      {side === "left" ? "‹" : "›"}
+    </button>
   );
 }
 
@@ -771,9 +795,9 @@ function HomePage({ setPage }) {
           </div>
         </div>
       </section>
+        {/* 3D COVERFLOW SERVICES SHOWCASE */}
+        <ServicesShowcase3D setPage={setPage} />
 
-      {/* ✅ EXPANDING CARDS — replaces old FullScreenServiceCards */}
-      <ExpandingCardsSection setPage={setPage} />
 
       {/* CTA BAND */}
       <section style={{ padding: "80px 24px", background: "linear-gradient(135deg,rgba(99,102,241,0.15),rgba(34,211,238,0.08))", borderTop: "1px solid rgba(99,102,241,0.2)", borderBottom: "1px solid rgba(99,102,241,0.2)" }}>
@@ -869,49 +893,244 @@ function ServicesPage({ setPage }) {
 ============================================================ */
 function AboutPage() {
   return (
-    <main style={{ paddingTop: 72, background: "#08080e", minHeight: "100vh" }}>
+    <main style={{ paddingTop: 72, background: "#08080e", minHeight: "100vh", overflow: "hidden" }}>
+      
+      {/* ── HERO BANNER SECTION ── */}
       <div style={{ padding: "80px 24px 60px", textAlign: "center", position: "relative" }}>
-        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 0%,rgba(99,102,241,0.12),transparent 60%)" }} />
+        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 0%,rgba(99,102,241,0.12),transparent 60%)", pointerEvents: "none" }} />
         <AnimatedSection>
-          <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#818cf8", display: "block", marginBottom: 16 }}>About Us</span>
+          <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#818cf8", display: "block", marginBottom: 16 }}>ABOUT US</span>
           <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(2.5rem,5vw,3.5rem)", fontWeight: 800, color: "#fafafa", marginBottom: 20 }}>
-            A Team Obsessed With <span style={{ background: "linear-gradient(135deg,#6366f1,#22d3ee)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Your Success</span>
+            A TEAM OBSESSED WITH <span style={{ background: "linear-gradient(135deg,#6366f1,#22d3ee)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>YOUR SUCCESS</span>
           </h1>
         </AnimatedSection>
       </div>
 
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px 100px" }}>
-        <AnimatedSection>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center", marginBottom: 100 }}>
-            <div>
-              <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "2rem", color: "#fafafa", marginBottom: 24, lineHeight: 1.3 }}>Founded in 2016 with one mission: make marketing honest.</h2>
-              <p style={{ color: "#a1a1aa", lineHeight: 1.8, marginBottom: 20 }}>Elevate Digital was born from frustration — too many agencies promising the moon, delivering mediocre reports, and billing clients for activity instead of results. We built something different.</p>
-              <p style={{ color: "#a1a1aa", lineHeight: 1.8 }}>Today we are a 40-person team of strategists, designers, and data scientists serving 250+ brands worldwide.</p>
-              <div style={{ marginTop: 32, display: "flex", gap: 24, flexWrap: "wrap" }}>
-                {[["2016", "Founded"], ["250+", "Clients"], ["40+", "Team Members"], ["$120M+", "Revenue Generated"]].map(([v, l]) => (
-                  <div key={l} style={{ padding: "20px 24px", background: "#12121c", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, textAlign: "center", minWidth: 100 }}>
-                    <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.8rem", color: "#fafafa", letterSpacing: "0.05em" }}>{v}</div>
-                    <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>{l}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div>
-              <div style={{ padding: 36, background: "#12121c", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 24, marginBottom: 16 }}>
-                <div style={{ fontSize: "1.4rem", fontFamily: "'Playfair Display',serif", color: "#fafafa", lineHeight: 1.5, marginBottom: 20, fontStyle: "italic" }}>"Marketing is no longer about the stuff you make, but the stories you tell."</div>
-                <div style={{ fontSize: 13, color: "#818cf8" }}>— Seth Godin</div>
-              </div>
-              <div style={{ padding: "24px 32px", background: "linear-gradient(135deg,rgba(99,102,241,0.15),rgba(34,211,238,0.08))", border: "1px solid rgba(99,102,241,0.25)", borderRadius: 20, display: "flex", alignItems: "center", gap: 16 }}>
-                <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "3rem", color: "#fafafa", letterSpacing: "0.05em", lineHeight: 1 }}>8+</span>
-                <span style={{ color: "#fafafa", fontWeight: 600 }}>Years of Excellence</span>
-              </div>
-            </div>
-          </div>
-        </AnimatedSection>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px 100px", position: "relative", zIndex: 2 }}>
+        
+        {/* ── CORE MISSION & STATS MATRIX (Responsive Linewise Layout) ── */}
+      
+{/* ── CORE MISSION SECTION ── */}
+<AnimatedSection>
+  <div
+    style={{
+      maxWidth: 1000,
+      margin: "0 auto 100px",
+      display: "flex",
+      flexDirection: "column",
+      gap: 40,
+    }}
+  >
+    {/* Heading */}
+    <div style={{ textAlign: "center" }}>
+      <h2
+        style={{
+          fontFamily: "'Playfair Display',serif",
+          fontSize: "clamp(2.5rem,5vw,4rem)",
+          color: "#fff",
+          lineHeight: 1.3,
+          marginBottom: 50,
+          fontWeight: 800,
+        }}
+>
+ FOUNDED IN{" "}
+  <span style={{ background: "linear-gradient(135deg,#6366f1,#22d3ee)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+    2016
+  </span>{" "}
+  WITH ONE{" "}
+  <span style={{ background: "linear-gradient(135deg,#6366f1,#22d3ee)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+    MISSION
+  </span>{" "}
+  MAKE{" "}
+  <span style={{ background: "linear-gradient(135deg,#6366f1,#22d3ee)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+    MARKETING
+  </span>{" "}
+    HONEST.
+  
+</h2>
 
+      <p
+        style={{
+          color: "#a1a1aa",
+          lineHeight: 1.9,
+          fontSize: 15,
+          maxWidth: 800,
+          margin: "0 auto 20px",
+        }}
+      >
+        Elevate Digital was born from frustration. Too many agencies promised
+        the moon, delivered mediocre reports, and charged clients for activity
+        instead of results. We built something different.
+        Today we are a 40-person team of strategists, designers, and data
+        scientists serving 250+ brands worldwide.
+      </p>
+
+      <p
+        style={{
+          color: "#a1a1aa",
+          lineHeight: 1.9,
+          fontSize: 30,
+          maxWidth: 800,
+          margin: "0 auto",
+        }}
+      >
+      </p>
+    </div>
+
+    {/* Statistics */}
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(4,1fr)",
+        gap: 24,
+      }}
+    >
+      {[
+        ["2016", "Founded"],
+        ["250+", "Clients"],
+        ["40+", "Team Members"],
+        ["$120M+", "Revenue Generated"],
+      ].map(([value, label]) => (
+        <div
+          key={label}
+          style={{
+            padding: 30,
+            background: "linear-gradient(135deg,#1d1d2a,#171722)",
+            borderRadius: 28,
+            border: "1px solid rgba(255,255,255,.08)",
+            boxShadow:
+              "0 20px 50px rgba(0,0,0,.55),0 0 30px rgba(99,102,241,.15)",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "'Bebas Neue',sans-serif",
+              fontSize: "3rem",
+              color: "#fff",
+              marginBottom: 10,
+            }}
+          >
+            {value}
+          </div>
+
+          <div
+            style={{
+              color: "#a1a1aa",
+              fontSize: 14,
+            }}
+          >
+            {label}
+          </div>
+        </div>
+      ))}
+    </div>
+
+    {/* Quote + Years */}
+    <div
+      style={{
+        display: "",
+        gridTemplateColumns: "3fr 1fr",
+        alignItems: "start",
+      }}
+    >
+      {/* Quote */}
+      <div
+        style={{
+          padding: 40,
+          background: "linear-gradient(135deg,#1d1d2a,#171722)",
+          borderRadius: 30,
+          border: "1px solid rgba(255,255,255,.08)",
+          boxShadow: "0 20px 50px rgba(0,0,0,.5)",
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "'Playfair Display',serif",
+            fontSize: "1.6rem",
+            color: "#fff",
+            lineHeight: 1.7,
+            fontStyle: "italic",
+            marginBottom: 25,
+          }}
+        >
+          "Marketing is no longer about the stuff you make, but the stories you
+          tell."
+        </div>
+
+        <div
+          style={{
+            color: "#818cf8",
+            fontSize: 14,
+            fontWeight: 700,
+            letterSpacing: ".15em",
+          }}
+        >
+          — SETH GODIN
+        </div>
+      </div>
+
+      {/* Years Card */}
+      <div style={{
+    width: 170,          
+    height: 170,
+    padding: 20,
+    background: "linear-gradient(#08080e, #08080e) padding-box, linear-gradient(135deg, rgba(99,102,241,0.15), rgba(34,211,238,0.08)) identity-box",
+    backgroundColor: "#08080e", 
+    backgroundImage: "linear-gradient(135deg, rgba(120, 99, 241, 0.12), rgba(34,211,238,0.08))",
+   // border: "1px solid rgba(99,102,241,0.25)",  
+    display: "flex", 
+    gap: 18,
+    boxShadow: "0 15px 30px rgba(99,102,241,0.1), inset 0 1px 0 rgba(255,255,255,0.1)",
+    borderRadius: 30,
+    //background:
+      //"linear-gradient(135deg,hsla(325, 86%, 53%, 0.10),hsla(325, 86%, 53%, 0.10))",
+    border: "1px solid rgba(255,255,255,.08)",
+    //boxShadow:
+      //"0 20px 50px rgba(0, 0, 0, 0),0 0 30px rgba(241, 99, 99, 0)",
+    //display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center",
+    textAlign: "center",
+    marginTop: -40,
+    marginInline: "auto",
+    marginRight:'5px',
+  }}
+>
+      
+        <div
+          style={{
+            fontFamily: "'Bebas Neue',sans-serif",
+            fontSize: "4rem",
+            color: "#fff",
+            lineHeight: 1,
+          }}
+        >
+          8+
+        </div>
+
+        <div
+          style={{
+            color: "#fff",
+            fontWeight: 600,
+            fontSize: 15,
+            textAlign: "center",
+          }}
+        >
+          Years of Excellence
+        </div>
+      </div>
+    </div>
+  </div>
+</AnimatedSection>
+  
+        {/* ── HOW WE WORK CARD CONTAINER MATRIX ── */}
         <AnimatedSection>
-          <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "2rem", color: "#fafafa", marginBottom: 40, textAlign: "center" }}>How We Work</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 24, marginBottom: 80 }}>
+          <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "2.2rem", color: "#fafafa", marginBottom: 12, textAlign: "center", fontWeight: 800 }}>How We Work</h2>
+          <p style={{ color: "#a1a1aa", textAlign: "center", marginBottom: 54, fontSize: "16px" }}>Our strategic framework engineered for sustainable performance metrics.</p>
+          
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 24, marginBottom: 100 }}>
             {[
               { icon: "📊", title: "Data-Driven", desc: "Every decision backed by analytics.", color: "#6366f1" },
               { icon: "🔍", title: "Transparent", desc: "Clear reporting and honest communication.", color: "#22d3ee" },
@@ -920,10 +1139,22 @@ function AboutPage() {
             ].map((v, i) => (
               <AnimatedSection key={v.title} delay={i * 0.1}>
                 <Card3D>
-                  <div style={{ padding: 28, background: "#12121c", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 20, height: "100%" }}>
-                    <div style={{ width: 48, height: 48, borderRadius: 14, background: `${v.color}20`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16 }}>{v.icon}</div>
-                    <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "#fafafa", marginBottom: 8 }}>{v.title}</h3>
-                    <p style={{ fontSize: 14, color: "#a1a1aa", lineHeight: 1.65 }}>{v.desc}</p>
+                  <div style={{
+                    padding: "45px 38px",
+                    height: "100%",
+                    borderRadius: 28,
+                    position: "relative",
+                    overflow: "hidden",
+                    background: "linear-gradient(135deg, rgba(18,18,28,.95), rgba(10,10,20,.9))",
+                    border: `1px solid ${v.color}35`,
+                    boxShadow: `0 0 0 1px ${v.color}20, 0 15px 40px ${v.color}15, 0 25px 60px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.05)`,
+                    backdropFilter: "blur(18px)",
+                    textAlign: "left",
+                    minHeight:'320px'
+                  }}>
+                    <div style={{ width: 56, height: 56, borderRadius: 18, background: `${v.color}15`, border: `1px solid ${v.color}30`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, marginBottom: 24, boxShadow: `0 0 20px ${v.color}30` }}>{v.icon}</div>
+                    <h3 style={{ color: "#fff", fontSize: "1.4rem", fontWeight: 700, lineHeight: 1.4, marginBottom: 14 }}>{v.title}</h3>
+                    <p style={{ color: "#a1a1aa", fontSize: "14.5px", lineHeight: 1.8, margin: 0 }}>{v.desc}</p>
                   </div>
                 </Card3D>
               </AnimatedSection>
@@ -931,18 +1162,29 @@ function AboutPage() {
           </div>
         </AnimatedSection>
 
+        {/* ── MEET THE TEAM PROFILE MATRIX ── */}
         <AnimatedSection>
-          <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "2rem", color: "#fafafa", marginBottom: 12, textAlign: "center" }}>Meet the Team</h2>
-          <p style={{ color: "#a1a1aa", textAlign: "center", marginBottom: 48 }}>Senior strategists with real-world experience at the world's best companies.</p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 24 }}>
+          <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "2.2rem", color: "#fafafa", marginBottom: 12, textAlign: "center", fontWeight: 800 }}>Meet the Team</h2>
+          <p style={{ color: "#a1a1aa", textAlign: "center", marginBottom: 54, fontSize: "16px" }}>Senior strategists with real-world experience at the world's best companies.</p>
+          
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))", gap: 24 }}>
             {TEAM.map((m, i) => (
               <AnimatedSection key={m.name} delay={i * 0.1}>
                 <Card3D>
-                  <div style={{ padding: 28, background: "#12121c", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 20, textAlign: "center" }}>
-                    <div style={{ width: 72, height: 72, borderRadius: "50%", background: `linear-gradient(135deg,${m.color},#22d3ee)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", fontWeight: 800, color: "#fff", margin: "0 auto 16px" }}>{m.initials}</div>
-                    <div style={{ fontWeight: 700, color: "#fafafa", marginBottom: 4 }}>{m.name}</div>
-                    <div style={{ fontSize: 13, color: m.color, marginBottom: 12, fontWeight: 600 }}>{m.role}</div>
-                    <p style={{ fontSize: 13, color: "#a1a1aa" }}>{m.bio}</p>
+                  <div style={{ 
+                    padding: "36px 30px", 
+                    background: "#12121c", 
+                    border: "1px solid rgba(255,255,255,0.07)", 
+                    borderRadius: 24, 
+                    textAlign: "left",
+                    boxShadow: "0 25px 50px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255,255,255,0.05)"
+                  }}>
+                    <div style={{ width: 68, height: 68, borderRadius: "50%", background: `linear-gradient(135deg,${m.color},#22d3ee)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem", fontWeight: 800, color: "#fff", marginBottom: 24, boxShadow: `0 8px 20px ${m.color}30` }}>{m.initials}</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      <div style={{ fontSize: "1.3rem", fontWeight: 700, color: "#fff" }}>{m.name}</div>
+                      <div style={{ color: m.color, fontWeight: 600, fontSize: 14, letterSpacing: "0.03em", textTransform: "uppercase", marginBottom: 4 }}>{m.role}</div>
+                      <p style={{ color: "#a1a1aa", lineHeight: 1.8, fontSize: "14px", margin: 0 }}>{m.bio}</p>
+                    </div>
                   </div>
                 </Card3D>
               </AnimatedSection>
@@ -950,10 +1192,22 @@ function AboutPage() {
           </div>
         </AnimatedSection>
       </div>
+
+      {/* Media Query styles to handle screen layout switches perfectly */}
+      <style>{`
+        .about-hero-grid {
+          grid-template-columns: 1.2fr 0.8fr;
+        }
+        @media (max-width: 990px) {
+          .about-hero-grid {
+            grid-template-columns: 1fr !important;
+            gap: 48px !important;
+          }
+        }
+      `}</style>
     </main>
   );
 }
-
 /* ============================================================
    WORK PAGE
 ============================================================ */
@@ -1133,10 +1387,62 @@ function TestimonialsPage() {
 /* ============================================================
    CONTACT PAGE
 ============================================================ */
-function ContactPage() {
+const CONTACT_API_URL = "http://localhost:5000/api/contact";
+
+export function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const [form, setForm] = useState({ name: "", email: "", company: "", service: "", message: "" });
+
   const handle = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handleSubmit = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+
+    if (!form.name.trim() || !form.email.trim() || !form.message.trim()) {
+      setError("Please fill out all required fields (Name, Email, and Message).");
+      return;
+    }
+
+    const emailRegex = /^[a-zA-Z0-9]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(form.email.trim())) {
+      setError("Your email is incorrect! Please enter a valid email address (e.g., name@company.com).");
+      return;
+    }
+
+    if (!form.company.trim()) {
+      setError("Please enter your Company name.");
+      return;
+    }
+
+    if (!form.service) {
+      setError("Please select a Service you are interested in.");
+      return;
+    }
+
+    setError("");
+    setSubmitting(true);
+
+    try {
+      const res = await fetch(CONTACT_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to send your message.");
+      }
+
+      setSubmitted(true);
+    } catch (err) {
+      setError(err.message || "Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <main style={{ paddingTop: 72, background: "#08080e", minHeight: "100vh" }}>
@@ -1151,7 +1457,7 @@ function ContactPage() {
         </AnimatedSection>
       </div>
 
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px 100px", display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: 64, alignItems: "start" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px 100px", display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: 64, alignItems: "start" }} className="contact-grid">
         <AnimatedSection>
           <div>
             <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "1.5rem", color: "#fafafa", marginBottom: 24 }}>Let's talk results</h2>
@@ -1181,9 +1487,14 @@ function ContactPage() {
                 <p style={{ color: "#a1a1aa" }}>We will reach out within 24 hours with your free audit findings.</p>
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                {error && (
+                  <div style={{ background: "rgba(239,68,68,0.15)", color: "#f87171", padding: "14px", borderRadius: "12px", border: "1px solid rgba(239,68,68,0.3)", fontSize: "14px", fontWeight: 500 }}>
+                    ⚠️ {error}
+                  </div>
+                )}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                  {[["name", "Full Name", "text", "John Doe"], ["email", "Email", "email", "john@company.com"]].map(([n, l, t, p]) => (
+                  {[["name", "Full Name", "text", "John Doe"], ["email", "Email Address", "text", "john@company.com"]].map(([n, l, t, p]) => (
                     <div key={n}>
                       <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#fafafa", marginBottom: 8 }}>{l}</label>
                       <input name={n} type={t} placeholder={p} value={form[n]} onChange={handle}
@@ -1216,18 +1527,112 @@ function ContactPage() {
                     onFocus={e => e.target.style.borderColor = "#6366f1"}
                     onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
                 </div>
-                <button onClick={() => setSubmitted(true)}
-                  style={{ padding: "16px", background: "linear-gradient(135deg,#6366f1,#22d3ee)", border: "none", borderRadius: 14, color: "#fff", fontSize: 16, fontWeight: 700, cursor: "pointer", transition: "transform 0.2s,box-shadow 0.2s", fontFamily: "inherit", boxShadow: "0 4px 24px rgba(99,102,241,0.3)" }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 36px rgba(99,102,241,0.45)"; }}
+
+                <button type="submit" disabled={submitting}
+                  style={{ padding: "16px", background: submitting ? "#2a2a3a" : "linear-gradient(135deg,#6366f1,#22d3ee)", border: "none", borderRadius: 14, color: "#fff", fontSize: 16, fontWeight: 700, cursor: submitting ? "not-allowed" : "pointer", transition: "transform 0.2s,box-shadow 0.2s", fontFamily: "inherit", boxShadow: "0 4px 24px rgba(99,102,241,0.3)" }}
+                  onMouseEnter={e => { if (!submitting) { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 36px rgba(99,102,241,0.45)"; } }}
                   onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 24px rgba(99,102,241,0.3)"; }}>
-                  Send Message →
+                  {submitting ? "Sending…" : "Send Message →"}
                 </button>
-              </div>
+              </form>
             )}
           </div>
         </AnimatedSection>
       </div>
+
+      <style>{`
+        @media (max-width: 868px) {
+          .contact-grid { grid-template-columns: 1fr !important; gap: 48px !important; }
+        }
+      `}</style>
+
+      <AskAIWidget />
     </main>
+  );
+}
+/* ============================================================
+   ASK AI WIDGET (Contact page)
+============================================================ */
+// This component allows users to ask questions to an AI assistant about the services offered by the company. It handles user input, sends the question to the backend, and displays the response or any errors that occur during the process.
+function AskAIWidget() {
+  const [question, setQuestion] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+
+  const ask = async () => {
+    if (!question.trim()) return;
+    setLoading(true); setError(""); setResult(null);
+    try {
+      const res = await askAssistant({ question: question.trim() });
+      if (!res.success) throw new Error(res.error || "Something went wrong.");
+      setResult(res);
+    } catch (e) {
+      setError(e?.message || "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: 900, margin: "0 auto 100px", padding: "0 24px" }}>
+      <AnimatedSection>
+        <div style={{ padding: 40, background: "linear-gradient(160deg,#12121c,#0c0c14)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 28, boxShadow: "0 20px 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+            <span style={{ fontSize: 24 }}>🤖</span>
+            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "1.6rem", color: "#fafafa", margin: 0 }}>
+              Ask Our <span style={{ background: "linear-gradient(135deg,#6366f1,#22d3ee)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>AI Assistant</span>
+            </h2>
+          </div>
+          <p style={{ color: "#a1a1aa", marginBottom: 24, fontSize: 14 }}>
+            Ask anything about our services.
+          </p>
+
+          <textarea
+            rows={3}
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            placeholder='e.g. "How can you help me rank on Google?"'
+            style={{ width: "100%", padding: "14px 16px", background: "#08080e", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, color: "#fafafa", fontSize: 15, outline: "none", fontFamily: "inherit", resize: "vertical", marginBottom: 16 }}
+            onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
+            onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")}
+          />
+
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 20 }}>
+            <button
+              onClick={ask}
+              disabled={loading || !question.trim()}
+              style={{
+                padding: "12px 28px",
+                background: loading || !question.trim() ? "#2a2a3a" : "linear-gradient(135deg,#6366f1,#22d3ee)",
+                border: "none", borderRadius: 12, color: "#fff", fontSize: 15, fontWeight: 700,
+                cursor: loading || !question.trim() ? "not-allowed" : "pointer",
+                fontFamily: "inherit", boxShadow: "0 4px 20px rgba(99,102,241,0.25)",
+              }}
+            >
+              {loading ? "Thinking…" : "Ask AI →"}
+            </button>
+          </div>
+
+          {error && (
+            <div style={{ padding: 16, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 12, color: "#fca5a5", fontSize: 14 }}>
+              {error}
+            </div>
+          )}
+
+          {result && (
+            <div style={{ padding: 20, background: "#08080e", border: "1px solid rgba(99,102,241,0.25)", borderRadius: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#22d3ee", marginBottom: 10 }}>
+                AI Response
+              </div>
+              <div style={{ color: "#fafafa", fontSize: 15, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                {result.answer}
+              </div>
+            </div>
+          )}
+        </div>
+      </AnimatedSection>
+    </div>
   );
 }
 
@@ -1388,3 +1793,5 @@ export default function App() {
     </div>
   );
 }
+
+
