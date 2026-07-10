@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { NAV_LINKS } from "../data/content";
 import { useScrollProgress } from "../hooks/useScrollProgress";
 
+
 export function Navbar({ page, setPage }) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
