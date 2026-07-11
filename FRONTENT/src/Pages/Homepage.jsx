@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { AnimatedSection } from "../components/AnimatedSection";
 import { ServicesShowcase3D } from "../components/ServicesShowcase3D";
+import Aura from "../components/Aura/Aura";
 
 export function HomePage({ setPage }) {
   const [count, setCount] = useState({ a: 0, b: 0, c: 0 });
@@ -53,7 +54,7 @@ export function HomePage({ setPage }) {
           <div style={{ animation: "fadeUp 0.8s ease forwards", opacity: 0, marginBottom: 24, display: "flex", justifyContent: "center" }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 18px", background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.25)", borderRadius: 50, fontSize: 13, fontWeight: 600, color: "#818cf8", letterSpacing: "0.06em", textTransform: "uppercase" }}>
               <span style={{ width: 8, height: 8, background: "#22d3ee", borderRadius: "50%", animation: "pulse 2s infinite" }} />
-              Award-Winning Digital Agency
+              AI Powereed Marketing To Out-Pace Your Competition
             </span>
           </div>
 
@@ -128,6 +129,9 @@ export function HomePage({ setPage }) {
         @keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:0.4} }
         @keyframes particle{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-20px)} }
       `}</style>
+
+<Aura setPage={setPage} />
+
     </main>
   );
 }
