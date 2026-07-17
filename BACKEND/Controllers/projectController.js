@@ -1,4 +1,3 @@
-// backend/controllers/projectController.js
 import pool from "../config/db.js";
 
 const VALID_STATUSES   = ["planning", "active", "review", "completed", "on-hold"];
