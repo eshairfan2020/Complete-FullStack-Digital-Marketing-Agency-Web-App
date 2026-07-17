@@ -1,4 +1,4 @@
-// backend/controllers/contactController.js
+
 import pool from "../config/db.js";
 
 export const submitContact = async (req, res) => {
