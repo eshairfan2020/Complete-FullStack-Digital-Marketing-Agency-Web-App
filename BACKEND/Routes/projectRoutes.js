@@ -1,4 +1,3 @@
-// backend/routes/projectRoutes.js
 import express from "express";
 import {
   getAllProjects,
