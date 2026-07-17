@@ -1,4 +1,4 @@
-// backend/middleware/adminAuth.js
+
 import jwt from "jsonwebtoken";
 
 export const adminAuth = (req, res, next) => {
