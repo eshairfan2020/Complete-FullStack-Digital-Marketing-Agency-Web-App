@@ -1,4 +1,4 @@
-// backend/routes/adminRoutes.js
+
 import express from "express";
 import { adminLogin, getContacts, deleteContact } from "../controllers/adminController.js";
 import { adminAuth } from "../middleware/adminAuth.js";
